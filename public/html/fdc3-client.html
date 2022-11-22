@@ -6,6 +6,7 @@
 		<title>Client</title>
 		<meta name="description" content="" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="stylesheet" href="../styles/client-styles.css" />
 		<script type="module" src="../js/fdc3-client.bundle.js"></script>
 	</head>
 
@@ -13,9 +14,15 @@
 		<div>
 			<h1>FDC3 Client</h1>
 		</div>
-        <div>
-            <button id="join-channel-btn">Join Channel</button>
-            <span id="join-channel-result"></span>
-        </div>
+		<div id="tests">
+			<div id="broadcast-test">
+				<button id="broadcast-btn">Broadcast Context</button>
+				<textarea id="context-textarea"></textarea>
+			</div>
+			<div id="intents-tests">
+				<button id="raise-intent-btn">Raise Intent</button>
+				<textarea id="intent-textarea"></textarea>
+			</div>
+		</div>
 	</body>
 </html>

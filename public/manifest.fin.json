@@ -53,6 +53,15 @@
 									"type": "component",
 									"componentName": "view",
 									"componentState": {
+										"name": "app-a",
+										"url": "http://localhost:5050/html/fdc3-client.html"
+									}
+								},
+								{
+									"type": "component",
+									"componentName": "view",
+									"componentState": {
+										"name": "app-b",
 										"url": "http://localhost:5050/html/fdc3-client.html"
 									}
 								}

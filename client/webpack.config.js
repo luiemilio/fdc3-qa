@@ -59,6 +59,32 @@ module.exports = [
 		output: {
 			filename: 'fdc3-client.bundle.js',
 			path: path.resolve(__dirname, '..', 'public', 'js')
+		},
+		experiments: {
+			topLevelAwait: true
+		}
+	},
+	{
+		entry: './client/src/app-picker.ts',
+		devtool: 'inline-source-map',
+		module: {
+			rules: [
+				{
+					test: /\.tsx?$/,
+					use: 'ts-loader',
+					exclude: /node_modules/
+				}
+			]
+		},
+		resolve: {
+			extensions: ['.tsx', '.ts', '.js']
+		},
+		output: {
+			filename: 'app-picker.bundle.js',
+			path: path.resolve(__dirname, '..', 'public', 'js')
+		},
+		experiments: {
+			topLevelAwait: true
 		}
 	}
 ];

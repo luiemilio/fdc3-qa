@@ -1,13 +1,32 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 declare const fin: OpenFin.Fin<"window" | "view">;
-
 declare const fdc3: any;
 
-const joinChannelBtn: HTMLButtonElement = document.querySelector('#join-channel-btn');
-
-joinChannelBtn.onclick = async () => {
-    await fdc3.joinChannel('red');
-    const currentChannel = await fdc3.getCurrentChannel();
-    const joinChannelResult: HTMLSpanElement = document.querySelector('#join-channel-result');
-    joinChannelResult.innerText = currentChannel.id === 'red' ? 'success' : 'fail';
+const CONTEXT = {
+    type: 'fdc3.instrument',
+    id: {
+        ticker: 'AAPL'
+    }
 };
+
+const broadcastBtn: HTMLButtonElement = document.querySelector('#broadcast-btn');
+const contextInput: HTMLTextAreaElement= document.querySelector('#context-textarea');
+const raiseIntentBtn: HTMLButtonElement = document.querySelector('#raise-intent-btn');
+const intentInput: HTMLTextAreaElement= document.querySelector('#intent-textarea');
+
+await fdc3.addContextListener(null, (context, contextMetadata) => {
+    contextInput.value = `context: ${JSON.stringify(context, null, 2)}\ncontextMetadata: ${JSON.stringify(contextMetadata, null, 2)}`;
+});
+
+await fdc3.addIntentListener('ViewChart', (context, contextMetadata) => {
+    intentInput.value = `Handled 'ViewChart' intent with the following context and metadata:\ncontext: ${JSON.stringify(context, null, 2)}\ncontextMetadata: ${JSON.stringify(contextMetadata, null, 2)}`;
+});
+
+broadcastBtn.onclick = async () => {
+    await fdc3.broadcast(CONTEXT);
+};
+
+raiseIntentBtn.onclick = async () => {
+    const intentResolution = await fdc3.raiseIntent('viewChart', CONTEXT);
+};
+

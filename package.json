@@ -8,6 +8,7 @@
 		"build-server": "tsc --project ./server",
 		"build-client": "webpack build --config ./client/webpack.config.js --mode=development",
 		"build-client-prod": "webpack build --config ./client/webpack.config.js --mode=production",
+		"watch": "webpack watch --config ./client/webpack.config.js --mode=development",
 		"start": "npm run server",
 		"client": "openfin -l -c http://localhost:5050/manifest.fin.json",
 		"server": "node ./server/build/index.js",
