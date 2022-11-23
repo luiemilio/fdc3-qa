@@ -29,7 +29,7 @@ const changeContextGroup = async (event: Event): Promise<void> => {
 const addContextGroupButtons = async (): Promise<void> => {
 	const contextGroups = await fin.me.interop.getContextGroups();
 	const windowFrameStyleSheet: CSSStyleSheet = document.styleSheets[0];
-	const buttonsWrapper: HTMLElement = document.querySelector("#buttons-wrapper");
+
 	for (const systemChannel of contextGroups) {
 		windowFrameStyleSheet.insertRule(
 			`.${systemChannel.displayMetadata.name}-channel { border-left: 2px solid ${systemChannel.displayMetadata.color} !important;}`
@@ -43,7 +43,8 @@ const addContextGroupButtons = async (): Promise<void> => {
 		newButton.id = `${systemChannel.displayMetadata.name}-button`;
 		newButton.title = systemChannel.displayMetadata.name;
 		newButton.addEventListener("click", changeContextGroup);
-		buttonsWrapper.prepend(newButton);
+		const minBtn = document.querySelector('#minimize-button');
+		minBtn.parentNode.insertBefore(newButton, minBtn);
 	}
 };
 
@@ -59,17 +60,55 @@ const closeWindow = async (): Promise<void> => openfinWindow.close();
 
 const minimizeWindow = async (): Promise<void> => openfinWindow.minimize();
 
+const addView = async () => {
+	const platform = fin.Platform.getCurrentSync();
+	await platform.createView({ url: "http://localhost:5050/html/fdc3-client.html", target: null }, fin.me.identity);
+};
+
+const createWindow = async () => {
+	const platform = fin.Platform.getCurrentSync();
+	await platform.createWindow({
+		layout: {
+			content: [
+				{
+					type: 'row',
+					content: [
+						{
+							type: 'component',
+							componentName: 'view',
+							componentState: {
+								url: 'http://localhost:5050/html/fdc3-client.html'
+							}
+						},
+						{
+							type: 'component',
+							componentName: 'view',
+							componentState: {
+								url: 'http://localhost:5050/html/fdc3-client.html'
+							}
+						}
+					]
+				}
+			]
+		}
+	});
+};
+
 const setupTitleBar = async (): Promise<void> => {
 	const title: HTMLElement = document.querySelector("#title");
 	const minBtn: HTMLElement = document.querySelector("#minimize-button");
 	const maxBtn: HTMLElement = document.querySelector("#expand-button");
 	const closeBtn: HTMLElement = document.querySelector("#close-button");
+	const addViewBtn: HTMLElement = document.querySelector("#add-view-button");
+	const createWinBtn: HTMLElement = document.querySelector("#create-window-button");
 
-	title.innerHTML = fin.me.identity.uuid;
+	title.innerHTML = fin.me.identity.name;
 
 	minBtn.addEventListener("click", minimizeWindow);
 	maxBtn.addEventListener("click", maxOrRestore);
 	closeBtn.addEventListener("click", closeWindow);
+	addViewBtn.addEventListener('click', addView);
+	createWinBtn.addEventListener('click', createWindow);
 
 	await addContextGroupButtons();
 };

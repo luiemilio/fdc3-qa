@@ -1,3 +1,12 @@
+div {
+    display: flex;
+    flex-direction: column;
+}
+
+button {
+    width: 100px;
+}
+
 #context-textarea {
     height: 220px;
     width: 230px;

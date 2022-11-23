@@ -28,3 +28,20 @@
 	color: var(--body-font-color);
 	margin: 0px;
 }
+
+#add-view-button {
+	background-image: url(../assets/add-view.png);
+}
+
+#create-window-button {
+	background-image: url(../assets/add-window.png);
+}
+
+.create-buttons {
+	background-repeat: no-repeat;
+	background-position: 50% 50%;
+	/* put the height and width of your image here */
+	height: 30px;
+	width: 30px;
+	border: none;
+}

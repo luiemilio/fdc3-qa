@@ -12,7 +12,7 @@
 		"defaultWindowOptions": {
 			"url": "http://localhost:5050/html/window.html",
 			"contextMenu": true,
-			"defaultWidth": 600,
+			"defaultWidth": 972,
 			"defaultHeight": 600,
 			"defaultLeft": 0,
 			"defaultTop": 0,
@@ -21,7 +21,8 @@
 			"backgroundThrottling": true,
 			"minHeight": 445,
 			"minWidth": 354,
-			"fdc3InteropApi": "2.0"
+			"fdc3InteropApi": "2.0",
+			"closeOnLastViewRemoved": false
 		},
 		"defaultViewOptions": {
 			"fdc3InteropApi": "2.0"
@@ -43,7 +44,6 @@
 	"snapshot": {
 		"windows": [
 			{
-				"name": "window1",
 				"layout": {
 					"content": [
 						{
@@ -53,7 +53,6 @@
 									"type": "component",
 									"componentName": "view",
 									"componentState": {
-										"name": "app-a",
 										"url": "http://localhost:5050/html/fdc3-client.html"
 									}
 								},
@@ -61,7 +60,6 @@
 									"type": "component",
 									"componentName": "view",
 									"componentState": {
-										"name": "app-b",
 										"url": "http://localhost:5050/html/fdc3-client.html"
 									}
 								}
