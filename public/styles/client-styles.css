@@ -4,10 +4,38 @@ div {
 }
 
 button {
+    width: 150px;
+}
+
+#result-textarea {
+    height: 400px;
+    width: 400px;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+}
+
+#test-content-div {
+    display: flex;
+    flex-direction: column;
+}
+
+select {
     width: 100px;
 }
 
-#context-textarea {
-    height: 220px;
-    width: 230px;
+#tests-textarea {
+    display: flex;
+    flex-direction: row;
+}
+
+#tests > * {
+    margin-top: 5px;
+    margin-left: 5px;
+}
+
+#app-select {
+    width: auto;
 }

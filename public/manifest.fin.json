@@ -12,8 +12,8 @@
 		"defaultWindowOptions": {
 			"url": "http://localhost:5050/html/window.html",
 			"contextMenu": true,
-			"defaultWidth": 972,
-			"defaultHeight": 600,
+			"defaultWidth": 1559,
+			"defaultHeight": 925,
 			"defaultLeft": 0,
 			"defaultTop": 0,
 			"saveWindowState": false,

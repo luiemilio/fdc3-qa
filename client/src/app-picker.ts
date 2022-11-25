@@ -20,7 +20,7 @@ const populate = (apps, appSelectDropDown) => {
 const setup = async () => {
     const appSelectDropDown: HTMLSelectElement = document.querySelector('#app-select');
     const params = new URLSearchParams(window.location.search);
-    const providerName = params.get('provider');
+    const providerName = params.get('provider');    
     const apps = JSON.parse(params.get('apps')).apps;
     const client = await fin.InterApplicationBus.Channel.connect(providerName);
     
