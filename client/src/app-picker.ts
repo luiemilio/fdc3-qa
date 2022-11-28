@@ -12,7 +12,7 @@ const setupListeners = (appSelectDropDown, client) => {
 
 const populate = (apps, appSelectDropDown) => {
     apps.forEach(app => {
-        const newApp = new Option(app.name, JSON.stringify(app));
+        const newApp = new Option(app.endpointId, JSON.stringify(app));
         appSelectDropDown.add(newApp);
     });
 }

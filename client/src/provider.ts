@@ -1,23 +1,25 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import * as FDC3 from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
-import { EXAMPLE_CONTEXTS_MAP, getAppDirectory } from './constants';
+import { EXAMPLE_CONTEXTS_MAP, APP_DIRECTORY } from './utils';
 declare const fin: OpenFin.Fin<"window" | "view">;
 
 fin.Platform.init({
 	interopOverride: async (InteropBroker: { new(): OpenFin.InteropBroker }) => {
 		class Override extends InteropBroker {
-			appDirectoryPromise: Promise<any>;
+			appDirectory: FDC3.AppMetadata[];
 
 			constructor() {
 				super();
-				this.appDirectoryPromise = getAppDirectory();
+				this.appDirectory = APP_DIRECTORY;
 			}
 
 			async setContext(setContextOptions, clientIdentity) {
+				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
+
 				const contextWithMetadata = {
 					...setContextOptions.context, contextMetadata: {
 						source: {
-							appId: clientIdentity.name,
+							appId,
 							instanceId: clientIdentity.endpointId
 						}
 					}
@@ -26,9 +28,10 @@ fin.Platform.init({
 				return super.setContext({ context: contextWithMetadata }, clientIdentity);
 			}
 
-			async getAppForIntent(modalParentIdentity): Promise<OpenFin.ClientInfo> {
+			async getAppForIntent(modalParentIdentity): Promise<OpenFin.ClientInfo | void> {
 				const allClientInfo = await super.getAllClientInfo();
 				const onlyViews = allClientInfo.filter(client => client.entityType === 'view');
+				console.log('###### onlyViews', onlyViews);
 				const apps = { apps: onlyViews };
 				const appPickerName = `app-picker-${modalParentIdentity.name}-${modalParentIdentity.uuid}`;
 				const queryString = new URLSearchParams(`apps=${JSON.stringify(apps)}&provider=${appPickerName}-app-picker-provider`);
@@ -36,11 +39,12 @@ fin.Platform.init({
 				const appPicker = fin.Window.wrapSync({ uuid: fin.me.identity.uuid, name: appPickerName });
 				const provider = await fin.InterApplicationBus.Channel.create(`${appPickerName}-app-picker-provider`);
 
-				appPicker.once('closed', async () => {
-					await provider.destroy();
-				});
-
 				return new Promise(async (resolve, reject) => {
+					appPicker.once('closed', async () => {
+						await provider.destroy();
+						resolve();
+					});
+
 					provider.register('target-app', (targetApp: OpenFin.ClientInfo) => {
 						resolve(targetApp);
 					});
@@ -66,38 +70,41 @@ fin.Platform.init({
 				const { name } = intent;
 
 				const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
+				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
+
 
 				const contextWithMetadata = {
 					...intent.context,
 					contextMetadata: {
 						source: {
-							appId: clientIdentity.name,
+							appId,
 							instanceId: clientIdentity.endpointId
 						}
 					}
 				};
 
 				const targetApp = await this.getAppForIntent(modalParentIdentity);
-				console.log('##### intent ', intent);
-				console.log('####### name: ', name.startsWith('fdc3.') ? name.substring(4) : name);
 
-				return super.setIntentTarget({ 
-					...intent,
-					name: name.startsWith('fdc3.') ? name.substring(5) : name, 
-					context: contextWithMetadata 
-				}, targetApp);
+				if (targetApp) {
+					return super.setIntentTarget({
+						...intent,
+						name,
+						context: contextWithMetadata
+					}, targetApp);
+				}
 			}
 
 			async handleFiredIntentForContext(contextForIntent: OpenFin.ContextForIntent<any>, clientIdentity: OpenFin.ClientIdentity & { entityType: string }): Promise<unknown> {
 				const { entityType } = clientIdentity;
 				const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
 				const targetApp = await this.getAppForIntent(modalParentIdentity);
+				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
 
 				const contextWithMetadata = {
 					...contextForIntent,
 					contextMetadata: {
 						source: {
-							appId: clientIdentity.name,
+							appId,
 							instanceId: clientIdentity.endpointId
 						}
 					}
@@ -108,13 +115,16 @@ fin.Platform.init({
 					context: contextWithMetadata
 				}
 
-				return super.setIntentTarget(intent, targetApp);
+				if (targetApp) {
+					return super.setIntentTarget(intent, targetApp);
+				}
 			}
 
 			async fdc3HandleGetInfo(payload: { fdc3Version: string; }, clientIdentity: OpenFin.ClientIdentity): Promise<FDC3.ImplementationMetadata> {
 				const defaultInfo: FDC3.ImplementationMetadata = await super.fdc3HandleGetInfo(payload, clientIdentity);
 				const allClientInfo = await super.getAllClientInfo();
-				const instanceId = allClientInfo.find(clientInfo => clientInfo.name === clientIdentity.name).endpointId;
+				const { connectionUrl, endpointId: instanceId } = allClientInfo.find(clientInfo => clientInfo.name === clientIdentity.name);
+				const appId = connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
 
 				return {
 					...defaultInfo,
@@ -124,23 +134,38 @@ fin.Platform.init({
 					},
 					appMetadata: {
 						...defaultInfo.appMetadata,
-						appId: clientIdentity.name,
+						appId,
 						instanceId
 					}
 				}
 			}
 
 			async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
-				const appDirectory = await this.appDirectoryPromise;
-				const appInfo = appDirectory.find(appInfo => appInfo.appId === app.appId);
+				const appInfo = this.appDirectory.find(appInfo => appInfo.appId === app.appId);
 				const platform = fin.Platform.getCurrentSync();
-				console.log('####### appInfo', appInfo);
-				await platform.createView({ url: appInfo.details.url, target: null });
+
+				await platform.createView({ url: appInfo.url, target: null });
 			}
 
 			async fdc3HandleGetAppMetadata(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<void> {
-				const appDirectory = await this.appDirectoryPromise;
-				return appDirectory.find(appInfo => appInfo.appId === app.appId);
+				return this.appDirectory.find(appInfo => appInfo.appId === app.appId);
+			}
+
+			async fdc3HandleFindInstances(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
+				const allClients = await super.getAllClientInfo();
+				const { appId } = app;
+				const urlEnd = appId === 'fdc3-client-two' ? '?client=2' : '?client=1';
+				
+				return allClients
+				.filter(clientInfo => {
+						return clientInfo.connectionUrl.endsWith(urlEnd);
+					})
+					.map(clientInfo => { 
+						return { 
+							appId, 
+							instanceId: clientInfo.endpointId
+						} 
+					});
 			}
 		}
 

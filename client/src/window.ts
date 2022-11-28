@@ -1,4 +1,5 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
+
 declare const fin: OpenFin.Fin<"window" | "view">;
 
 export const CONTAINER_ID = "layout-container";
@@ -62,7 +63,7 @@ const minimizeWindow = async (): Promise<void> => openfinWindow.minimize();
 
 const addView = async () => {
 	const platform = fin.Platform.getCurrentSync();
-	await platform.createView({ url: "http://localhost:5050/html/fdc3-client.html", target: null }, fin.me.identity);
+	await platform.createView({ url: "http://localhost:5050/html/fdc3-client.html?client=1", target: null }, fin.me.identity);
 };
 
 const createWindow = async () => {
@@ -77,14 +78,14 @@ const createWindow = async () => {
 							type: 'component',
 							componentName: 'view',
 							componentState: {
-								url: 'http://localhost:5050/html/fdc3-client.html'
+								url: 'http://localhost:5050/html/fdc3-client.html?client=1'
 							}
 						},
 						{
 							type: 'component',
 							componentName: 'view',
 							componentState: {
-								url: 'http://localhost:5050/html/fdc3-client.html'
+								url: 'http://localhost:5050/html/fdc3-client.html?client=2'
 							}
 						}
 					]

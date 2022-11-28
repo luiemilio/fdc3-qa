@@ -53,14 +53,14 @@
 									"type": "component",
 									"componentName": "view",
 									"componentState": {
-										"url": "http://localhost:5050/html/fdc3-client.html"
+										"url": "http://localhost:5050/html/fdc3-client.html?client=1"
 									}
 								},
 								{
 									"type": "component",
 									"componentName": "view",
 									"componentState": {
-										"url": "http://localhost:5050/html/fdc3-client.html"
+										"url": "http://localhost:5050/html/fdc3-client.html?client=2"
 									}
 								}
 							]

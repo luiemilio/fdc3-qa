@@ -1,3 +1,22 @@
+export const APP_DIRECTORY = [
+    { 
+        appId: 'fdc3-client-one',
+        name: 'fdc3-client-one',
+        title: 'FDC3 QA - Client App',
+        description: 'Client to test FDC3 functionality',
+        version: '1.0',
+        url: 'http://localhost:5050/html/fdc3-client.html?client=1'
+    },
+    { 
+        appId: 'fdc3-client-two',
+        name: 'fdc3-client-two',
+        title: 'FDC3 QA - Client App 2',
+        description: 'Second app just to test launching more than one app',
+        version: '1.5',
+        url: 'http://localhost:5050/html/fdc3-client.html?client=2'
+    },
+]
+
 export const getAppDirectory = async () => {
     const appDirectoryURL = 'https://directory.fdc3.finos.org/v2/apps/';
     const response = await fetch(appDirectoryURL);
