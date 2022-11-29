@@ -1,16 +1,16 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import * as FDC3 from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
-import { EXAMPLE_CONTEXTS_MAP, APP_DIRECTORY } from './utils';
+import { EXAMPLE_CONTEXTS_MAP, APP_DIRECTORY, INTENTS_METADATA_MAP, showPicker } from './utils';
 declare const fin: OpenFin.Fin<"window" | "view">;
 
 fin.Platform.init({
 	interopOverride: async (InteropBroker: { new(): OpenFin.InteropBroker }) => {
 		class Override extends InteropBroker {
-			appDirectory: FDC3.AppMetadata[];
+			private intentHandlerMap: any;
 
 			constructor() {
 				super();
-				this.appDirectory = APP_DIRECTORY;
+				this.intentHandlerMap = new Map();
 			}
 
 			async setContext(setContextOptions, clientIdentity) {
@@ -28,47 +28,10 @@ fin.Platform.init({
 				return super.setContext({ context: contextWithMetadata }, clientIdentity);
 			}
 
-			async getAppForIntent(modalParentIdentity): Promise<OpenFin.ClientInfo | void> {
-				const allClientInfo = await super.getAllClientInfo();
-				const onlyViews = allClientInfo.filter(client => client.entityType === 'view');
-				console.log('###### onlyViews', onlyViews);
-				const apps = { apps: onlyViews };
-				const appPickerName = `app-picker-${modalParentIdentity.name}-${modalParentIdentity.uuid}`;
-				const queryString = new URLSearchParams(`apps=${JSON.stringify(apps)}&provider=${appPickerName}-app-picker-provider`);
-				const url = `http://localhost:5050/html/app-picker.html?${queryString.toString()}`;
-				const appPicker = fin.Window.wrapSync({ uuid: fin.me.identity.uuid, name: appPickerName });
-				const provider = await fin.InterApplicationBus.Channel.create(`${appPickerName}-app-picker-provider`);
-
-				return new Promise(async (resolve, reject) => {
-					appPicker.once('closed', async () => {
-						await provider.destroy();
-						resolve();
-					});
-
-					provider.register('target-app', (targetApp: OpenFin.ClientInfo) => {
-						resolve(targetApp);
-					});
-
-					await fin.Window.create({
-						name: appPickerName,
-						url,
-						modalParentIdentity,
-						frame: true,
-						defaultHeight: 240,
-						defaultWidth: 400,
-						saveWindowState: false,
-						defaultCentered: true,
-						maximizable: false,
-						minimizable: false,
-						resizable: false
-					});
-				});
-			}
-
 			async handleFiredIntent(intent, clientIdentity) {
 				const { entityType } = clientIdentity;
 				const { name } = intent;
-
+				const allClientInfo = await super.getAllClientInfo();
 				const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
 				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
 
@@ -83,9 +46,9 @@ fin.Platform.init({
 					}
 				};
 
-				const targetApp = await this.getAppForIntent(modalParentIdentity);
+				const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
 
-				if (targetApp) {
+				if (targetApp && typeof targetApp !== 'string') {
 					return super.setIntentTarget({
 						...intent,
 						name,
@@ -96,8 +59,9 @@ fin.Platform.init({
 
 			async handleFiredIntentForContext(contextForIntent: OpenFin.ContextForIntent<any>, clientIdentity: OpenFin.ClientIdentity & { entityType: string }): Promise<unknown> {
 				const { entityType } = clientIdentity;
+				const allClientInfo = await super.getAllClientInfo();
 				const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
-				const targetApp = await this.getAppForIntent(modalParentIdentity);
+				const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
 				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
 
 				const contextWithMetadata = {
@@ -115,7 +79,7 @@ fin.Platform.init({
 					context: contextWithMetadata
 				}
 
-				if (targetApp) {
+				if (targetApp && typeof targetApp !== 'string') {
 					return super.setIntentTarget(intent, targetApp);
 				}
 			}
@@ -141,31 +105,75 @@ fin.Platform.init({
 			}
 
 			async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
-				const appInfo = this.appDirectory.find(appInfo => appInfo.appId === app.appId);
+				const appInfo = APP_DIRECTORY.find(appInfo => appInfo.appId === app.appId);
 				const platform = fin.Platform.getCurrentSync();
 
 				await platform.createView({ url: appInfo.url, target: null });
 			}
 
-			async fdc3HandleGetAppMetadata(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<void> {
-				return this.appDirectory.find(appInfo => appInfo.appId === app.appId);
+			async fdc3HandleGetAppMetadata(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
+				return APP_DIRECTORY.find(appInfo => appInfo.appId === app.appId);
 			}
 
 			async fdc3HandleFindInstances(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
 				const allClients = await super.getAllClientInfo();
 				const { appId } = app;
 				const urlEnd = appId === 'fdc3-client-two' ? '?client=2' : '?client=1';
-				
+
 				return allClients
-				.filter(clientInfo => {
+					.filter(clientInfo => {
 						return clientInfo.connectionUrl.endsWith(urlEnd);
 					})
-					.map(clientInfo => { 
-						return { 
-							appId, 
+					.map(clientInfo => {
+						return {
+							appId,
 							instanceId: clientInfo.endpointId
-						} 
+						}
 					});
+			}
+
+			async handleInfoForIntent(options: OpenFin.InfoForIntentOptions<OpenFin.IntentMetadata<any>>, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
+				const allClientInfo = await super.getAllClientInfo();
+
+				const apps = allClientInfo
+					.filter(clientInfo => clientInfo.entityType === 'view')
+					.map((clientInfo) => {
+						const { endpointId: instanceId, connectionUrl } = clientInfo;
+						const appId = connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
+
+						return {
+							appId,
+							instanceId
+						}
+					});
+
+				return {
+					intent: INTENTS_METADATA_MAP.get(options.name),
+					apps
+				}
+			}
+
+			async handleInfoForIntentsByContext(context: OpenFin.Context | OpenFin.FindIntentsByContextOptions<OpenFin.IntentMetadata<any>>, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
+				const allClientInfo = await super.getAllClientInfo();
+
+				const apps = allClientInfo
+					.filter(clientInfo => clientInfo.entityType === 'view')
+					.map((clientInfo) => {
+						const { endpointId: instanceId, connectionUrl } = clientInfo;
+						const appId = connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
+
+						return {
+							appId,
+							instanceId
+						}
+					});
+
+				return [...INTENTS_METADATA_MAP.values()].map((intentMetadata) => {
+					return {
+						intent: intentMetadata,
+						apps
+					}
+				})
 			}
 		}
 

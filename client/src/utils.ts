@@ -1,3 +1,7 @@
+import * as OpenFin from "@openfin/core/src/OpenFin";
+
+declare const fin: OpenFin.Fin<"window" | "view">;
+
 export const APP_DIRECTORY = [
     { 
         appId: 'fdc3-client-one',
@@ -45,15 +49,61 @@ const instrument = {
     }
 }
 
-export const EXAMPLE_APP_METADATA = {
+export const INTENTS_METADATA_MAP = new Map([
+    ['ViewChart', { name: 'ViewChart', displayName: 'Start a Chat' }],
+    ['ViewNews', { name: 'ViewNews', displayName: 'View News' }],
+    ['StartCall', { name: 'StartCall', displayName: 'Start a Call' }],
+]);
 
-}
-
-export const EXAMPLE_CONTEXTS_MAP = new Map();
-EXAMPLE_CONTEXTS_MAP.set('fdc3.contact', { context: contact, intent: 'StartCall' });
-EXAMPLE_CONTEXTS_MAP.set('fdc3.instrument', { context: instrument, intent: 'ViewChart' });
+export const EXAMPLE_CONTEXTS_MAP = new Map([
+['fdc3.contact', { context: contact, intent: 'StartCall' }],
+    ['fdc3.instrument', { context: instrument, intent: 'ViewChart' }]
+]);
 
 export const INTENT_CONTEXT_MAP = new Map();
 INTENT_CONTEXT_MAP.set('ViewChart', instrument);
 INTENT_CONTEXT_MAP.set('ViewNews', instrument);
 INTENT_CONTEXT_MAP.set('StartCall', contact);
+
+
+export const showPicker = async (modalParentIdentity, type, payload?): Promise<OpenFin.ClientInfo | string | void> => {
+    const pickerName = `picker-${modalParentIdentity.name}-${modalParentIdentity.uuid}`;
+    const providerName = `${pickerName}-provider`;
+    const queryString = new URLSearchParams(`provider=${providerName}&type=${type}`);
+    
+    if (type === 'app' && payload) {
+        const { allClientInfo } = payload;
+        const onlyViews = allClientInfo.filter(client => client.entityType === 'view');
+        queryString.set('apps', JSON.stringify({ apps: onlyViews }));
+    }
+
+    const url = `http://localhost:5050/html/picker.html?${queryString.toString()}`;
+    const appPicker = fin.Window.wrapSync({ uuid: fin.me.identity.uuid, name: pickerName });
+    const provider = await fin.InterApplicationBus.Channel.create(providerName);
+
+    return new Promise(async (resolve, reject) => {
+        appPicker.once('closed', async () => {
+            await provider.destroy();
+            resolve();
+        });
+
+        provider.register('picker-result', (result: any) => {
+            console.log('##### picker result', result);
+            resolve(result);
+        });
+
+        await fin.Window.create({
+            name: pickerName,
+            url,
+            modalParentIdentity,
+            frame: true,
+            defaultHeight: 240,
+            defaultWidth: 400,
+            saveWindowState: false,
+            defaultCentered: true,
+            maximizable: false,
+            minimizable: false,
+            resizable: false
+        });
+    });
+}

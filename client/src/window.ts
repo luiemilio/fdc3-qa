@@ -1,4 +1,5 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
+import { showPicker } from './utils';
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
@@ -62,13 +63,17 @@ const closeWindow = async (): Promise<void> => openfinWindow.close();
 const minimizeWindow = async (): Promise<void> => openfinWindow.minimize();
 
 const addView = async () => {
+	const fdc3InteropApi = await showPicker(fin.me.identity, 'fdc3') as string;
+	console.log('####### fdc3 version', fdc3InteropApi);
 	const platform = fin.Platform.getCurrentSync();
-	await platform.createView({ url: "http://localhost:5050/html/fdc3-client.html?client=1", target: null }, fin.me.identity);
+	await platform.createView({ url: "http://localhost:5050/html/fdc3-client.html?client=1", target: null, fdc3InteropApi }, fin.me.identity);
 };
 
 const createWindow = async () => {
+	const fdc3InteropApi = await showPicker(fin.me.identity, 'fdc3') as string;
 	const platform = fin.Platform.getCurrentSync();
 	await platform.createWindow({
+		fdc3InteropApi,
 		layout: {
 			content: [
 				{
@@ -78,14 +83,16 @@ const createWindow = async () => {
 							type: 'component',
 							componentName: 'view',
 							componentState: {
-								url: 'http://localhost:5050/html/fdc3-client.html?client=1'
+								url: 'http://localhost:5050/html/fdc3-client.html?client=1',
+								fdc3InteropApi
 							}
 						},
 						{
 							type: 'component',
 							componentName: 'view',
 							componentState: {
-								url: 'http://localhost:5050/html/fdc3-client.html?client=2'
+								url: 'http://localhost:5050/html/fdc3-client.html?client=2',
+								fdc3InteropApi
 							}
 						}
 					]

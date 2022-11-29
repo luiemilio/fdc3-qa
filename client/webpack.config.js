@@ -65,7 +65,7 @@ module.exports = [
 		}
 	},
 	{
-		entry: './client/src/app-picker.ts',
+		entry: './client/src/picker.ts',
 		devtool: 'inline-source-map',
 		module: {
 			rules: [
@@ -80,7 +80,7 @@ module.exports = [
 			extensions: ['.tsx', '.ts', '.js']
 		},
 		output: {
-			filename: 'app-picker.bundle.js',
+			filename: 'picker.bundle.js',
 			path: path.resolve(__dirname, '..', 'public', 'js')
 		},
 		experiments: {
