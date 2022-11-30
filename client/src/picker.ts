@@ -15,13 +15,13 @@ const setupListeners = (client, type) => {
 const populate = (items, type) => {
     const selectDropDown: HTMLSelectElement = document.querySelector('#picker-select');
 
-    items.forEach(item => {
+    items.forEach((item, idx) => {
         let text;
         let value;
 
         if (type === 'app') {
-            const { endpointId, name } = item;
-            text = `${name}-${endpointId}`;
+            const { name } = item;
+            text = name;
             value = JSON.stringify(item);
         }
 
@@ -30,7 +30,8 @@ const populate = (items, type) => {
             value = item;
         }
 
-        const option = new Option(text, value);
+        const option = idx === 0 ? new Option(text, value, true) : new Option(text, value);
+
         selectDropDown.add(option);
     });
 }

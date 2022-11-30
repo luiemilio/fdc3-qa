@@ -14,7 +14,9 @@ fin.Platform.init({
 			}
 
 			async setContext(setContextOptions, clientIdentity) {
-				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
+				const allClientInfo = await super.getAllClientInfo();
+				const broadcasterClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
+				const appId = broadcasterClientInfo.connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
 
 				const contextWithMetadata = {
 					...setContextOptions.context, contextMetadata: {
@@ -32,43 +34,55 @@ fin.Platform.init({
 				const { entityType } = clientIdentity;
 				const { name } = intent;
 				const allClientInfo = await super.getAllClientInfo();
+				const raiserClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
+				const sourceAppId = raiserClientInfo.connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
 				const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
-				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
 
+				const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo }) as OpenFin.ClientInfo;
 
 				const contextWithMetadata = {
 					...intent.context,
 					contextMetadata: {
 						source: {
-							appId,
+							appId: sourceAppId,
 							instanceId: clientIdentity.endpointId
 						}
 					}
 				};
 
-				const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
+				if (!targetApp) {
+					throw new Error('NoAppFound');
+				}
 
-				if (targetApp && typeof targetApp !== 'string') {
-					return super.setIntentTarget({
-						...intent,
-						name,
-						context: contextWithMetadata
-					}, targetApp);
+				try {
+					await super.setIntentTarget({ ...intent, name, context: contextWithMetadata }, targetApp);
+					const targetAppId = targetApp.connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
+					
+					return {
+						source: {
+							appId: targetAppId,
+							instanceId: targetApp.endpointId
+						},
+						intent: name
+					}
+				} catch (error) {
+					throw new Error(error.message);	
 				}
 			}
 
 			async handleFiredIntentForContext(contextForIntent: OpenFin.ContextForIntent<any>, clientIdentity: OpenFin.ClientIdentity & { entityType: string }): Promise<unknown> {
 				const { entityType } = clientIdentity;
 				const allClientInfo = await super.getAllClientInfo();
+				const raiserClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
+				const raiserAppId = raiserClientInfo.connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
 				const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
 				const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
-				const appId = clientIdentity.name.startsWith('fdc3-client-two') ? 'fdc3-client-two' : 'fdc3-client-one';
 
 				const contextWithMetadata = {
 					...contextForIntent,
 					contextMetadata: {
 						source: {
-							appId,
+							appId: raiserAppId,
 							instanceId: clientIdentity.endpointId
 						}
 					}
@@ -79,8 +93,25 @@ fin.Platform.init({
 					context: contextWithMetadata
 				}
 
-				if (targetApp && typeof targetApp !== 'string') {
-					return super.setIntentTarget(intent, targetApp);
+				if (!targetApp) {
+					throw new Error('NoAppFound');
+				}
+
+				if (typeof targetApp !== 'string') {
+					try {
+						const targetAppId = targetApp.connectionUrl.endsWith('?client=2') ? 'fdc3-client-two' : 'fdc3-client-one';
+						await super.setIntentTarget(intent, targetApp);
+	
+						return {
+							source: {
+								appId: targetAppId,
+								instanceId: targetApp.endpointId
+							},
+							intent: intent.name
+						}
+					} catch (error) {
+						throw new Error(error.message);
+					}
 				}
 			}
 

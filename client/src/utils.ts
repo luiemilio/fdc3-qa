@@ -98,7 +98,7 @@ export const showPicker = async (modalParentIdentity, type, payload?): Promise<O
             modalParentIdentity,
             frame: true,
             defaultHeight: 240,
-            defaultWidth: 400,
+            defaultWidth: 500,
             saveWindowState: false,
             defaultCentered: true,
             maximizable: false,

@@ -1,5 +1,5 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
-import type { DesktopAgent, Listener } from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
+import type { DesktopAgent, Listener, PrivateChannel } from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
 import { EXAMPLE_CONTEXTS_MAP, INTENT_CONTEXT_MAP, APP_DIRECTORY } from './utils';
 
 declare const fin: OpenFin.Fin<"window" | "view">;
@@ -48,9 +48,17 @@ const setupIntentListener = async () => {
     selectIntent.onchange = async () => {
         const intent = selectIntent.value;
 
-        const intentHandler = (context, contextMetadata) => {
+        const intentHandler = async (context, contextMetadata) => {
             setTextArea(`Handled ${intent} intent with the following context and metadata:\ncontext: ${JSON.stringify(context, null, 2)}\ncontextMetadata: ${JSON.stringify(contextMetadata, null, 2)}`);
-        }
+
+            const privateChannel = await fdc3.createPrivateChannel();
+            
+            privateChannel.onAddContextListener((...args) => {
+                privateChannel.broadcast(EXAMPLE_CONTEXTS_MAP.get(context.type).context);
+            });
+
+            return privateChannel;
+        }   
 
         try {
             if (intentListener) {
@@ -71,7 +79,17 @@ const setupRaiseIntentListener = async () => {
         const selectedIntent = selectRaiseIntent.value;
 
         try {
-            await fdc3.raiseIntent(selectedIntent, INTENT_CONTEXT_MAP.get(selectedIntent));
+            const intentResolution = await fdc3.raiseIntent(selectedIntent, INTENT_CONTEXT_MAP.get(selectedIntent));
+            const { getResult } = intentResolution;
+
+            if (getResult) {
+                const privateChannel = await getResult() as PrivateChannel;
+
+                privateChannel.addContextListener(null, (context) => {
+                    setTextArea(`IntentResolution handled correctly.\ngetResult fired was a Private Channel that broadcasted this context:\n${JSON.stringify(context, null, 2)}`)
+                });
+            }
+
         } catch (error) {
             setTextArea(error.message);
         }

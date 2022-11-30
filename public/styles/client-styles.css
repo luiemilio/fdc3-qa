@@ -23,7 +23,7 @@ label {
 }
 
 select {
-    width: 100px;
+    width: fit-content;
 }
 
 #tests-textarea {
