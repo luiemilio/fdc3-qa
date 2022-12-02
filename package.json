@@ -1,5 +1,5 @@
 {
-	"name": "setup-cross-platform-interop",
+	"name": "fdc3-manual-testing",
 	"version": "1.0.0",
 	"description": "",
 	"main": "index.js",
@@ -15,7 +15,7 @@
 		"kill": "npm --prefix ../../common/ run kill",
 		"validate": "npm --prefix ../../../ run validate"
 	},
-	"author": "adam.saland@openfin.co",
+	"author": "OpenFin Inc.",
 	"license": "SEE LICENSE IN LICENSE.MD",
 	"devDependencies": {
 		"@openfin/core": "^30.73.3",
