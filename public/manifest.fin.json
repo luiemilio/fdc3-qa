@@ -4,8 +4,7 @@
 		"version": "canary"
 	},
 	"platform": {
-		"uuid": "platform-1",
-		"icon": "https://www.learningcontainer.com/wp-content/uploads/2020/09/Sample-ICO-Image-for-Testing.ico",
+		"uuid": "fdc3-qa",
 		"autoShow": true,
 		"providerUrl": "http://localhost:5050/html/provider.html",
 		"apiDiagnostics": false,
@@ -21,17 +20,13 @@
 			"backgroundThrottling": true,
 			"minHeight": 445,
 			"minWidth": 354,
-			"fdc3InteropApi": "2.0",
-			"closeOnLastViewRemoved": false
+			"fdc3InteropApi": "2.0"
 		},
 		"defaultViewOptions": {
 			"fdc3InteropApi": "2.0"
 		},
 		"interopBrokerConfiguration": {
 			"logging": {
-				"all": {
-					"enabled": false
-				},
 				"beforeAction": {
 					"enabled": false
 				},
@@ -40,34 +35,5 @@
 				}
 			}
 		}
-	},
-	"snapshot": {
-		"windows": [
-			{
-				"layout": {
-					"content": [
-						{
-							"type": "row",
-							"content": [
-								{
-									"type": "component",
-									"componentName": "view",
-									"componentState": {
-										"url": "http://localhost:5050/html/fdc3-client.html?client=1"
-									}
-								},
-								{
-									"type": "component",
-									"componentName": "view",
-									"componentState": {
-										"url": "http://localhost:5050/html/fdc3-client.html?client=2"
-									}
-								}
-							]
-						}
-					]
-				}
-			}
-		]
 	}
 }

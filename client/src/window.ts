@@ -1,7 +1,7 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
-import { showPicker } from './utils';
+import { createWindow, getWindowOptions, showPicker, } from './utils';
 
-declare const fin: OpenFin.Fin<"window" | "view">;
+declare const fin: OpenFin.Fin<"window">;
 
 export const CONTAINER_ID = "layout-container";
 const openfinWindow: OpenFin.Window = fin.Window.getCurrentSync();
@@ -62,44 +62,11 @@ const closeWindow = async (): Promise<void> => openfinWindow.close();
 
 const minimizeWindow = async (): Promise<void> => openfinWindow.minimize();
 
-const addView = async () => {
+const handleCreateWindow = async () => {
 	const fdc3InteropApi = await showPicker(fin.me.identity, 'fdc3') as string;
-	console.log('####### fdc3 version', fdc3InteropApi);
-	const platform = fin.Platform.getCurrentSync();
-	await platform.createView({ url: "http://localhost:5050/html/fdc3-client.html?client=1", target: null, fdc3InteropApi }, fin.me.identity);
-};
+	const options = getWindowOptions(fdc3InteropApi);
+	return createWindow(options);
 
-const createWindow = async () => {
-	const fdc3InteropApi = await showPicker(fin.me.identity, 'fdc3') as string;
-	const platform = fin.Platform.getCurrentSync();
-	await platform.createWindow({
-		fdc3InteropApi,
-		layout: {
-			content: [
-				{
-					type: 'row',
-					content: [
-						{
-							type: 'component',
-							componentName: 'view',
-							componentState: {
-								url: 'http://localhost:5050/html/fdc3-client.html?client=1',
-								fdc3InteropApi
-							}
-						},
-						{
-							type: 'component',
-							componentName: 'view',
-							componentState: {
-								url: 'http://localhost:5050/html/fdc3-client.html?client=2',
-								fdc3InteropApi
-							}
-						}
-					]
-				}
-			]
-		}
-	});
 };
 
 const setupTitleBar = async (): Promise<void> => {
@@ -107,7 +74,6 @@ const setupTitleBar = async (): Promise<void> => {
 	const minBtn: HTMLElement = document.querySelector("#minimize-button");
 	const maxBtn: HTMLElement = document.querySelector("#expand-button");
 	const closeBtn: HTMLElement = document.querySelector("#close-button");
-	const addViewBtn: HTMLElement = document.querySelector("#add-view-button");
 	const createWinBtn: HTMLElement = document.querySelector("#create-window-button");
 
 	title.innerHTML = fin.me.identity.name;
@@ -115,8 +81,7 @@ const setupTitleBar = async (): Promise<void> => {
 	minBtn.addEventListener("click", minimizeWindow);
 	maxBtn.addEventListener("click", maxOrRestore);
 	closeBtn.addEventListener("click", closeWindow);
-	addViewBtn.addEventListener('click', addView);
-	createWinBtn.addEventListener('click', createWindow);
+	createWinBtn.addEventListener('click', handleCreateWindow);
 
 	await addContextGroupButtons();
 };

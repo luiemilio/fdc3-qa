@@ -1,4 +1,5 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
+
 declare const fin: OpenFin.Fin<"window" | "view">;
 
 const setupListeners = (client, type) => {
@@ -47,7 +48,6 @@ const setup = async () => {
     if (pickerType === 'app') {
         header.innerHTML = 'Pick an app to handle the intent'
         items = JSON.parse(params.get('apps')).apps;
-        console.log('####### items: ', items);
     }
 
     if (pickerType === 'fdc3') {

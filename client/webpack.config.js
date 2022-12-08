@@ -19,6 +19,9 @@ module.exports = [
 		output: {
 			filename: 'provider.bundle.js',
 			path: path.resolve(__dirname, '..', 'public', 'js')
+		},
+		experiments: {
+			topLevelAwait: true
 		}
 	},
 	{

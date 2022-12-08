@@ -1,6 +1,7 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import type { DesktopAgent, Listener, PrivateChannel } from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
-import { EXAMPLE_CONTEXTS_MAP, INTENT_CONTEXT_MAP, APP_DIRECTORY } from './utils';
+import { APP_DIRECTORY } from './utils';
+import { CONTEXTS_MAP, INTENT_CONTEXT_MAP } from './contexts_intents';
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 declare const fdc3: DesktopAgent;
@@ -31,7 +32,7 @@ const setupBroadcastListener = async () => {
         const selectedContextType = selectBroadcastContext.value;
 
         try {
-            await fdc3.broadcast(EXAMPLE_CONTEXTS_MAP.get(selectedContextType).context);
+            await fdc3.broadcast(CONTEXTS_MAP.get(selectedContextType).context);
         } catch (error) {
             setTextArea(error.message);
         }
@@ -54,7 +55,7 @@ const setupIntentListener = async () => {
             const privateChannel = await fdc3.createPrivateChannel();
             
             privateChannel.onAddContextListener((...args) => {
-                privateChannel.broadcast(EXAMPLE_CONTEXTS_MAP.get(context.type).context);
+                privateChannel.broadcast(CONTEXTS_MAP.get(context.type).context);
             });
 
             return privateChannel;
@@ -104,7 +105,7 @@ const setupRaiseIntentForContextListener = async () => {
 
     selectIntentForContext.onchange = async () => {
         try {
-            const intentResolution = await fdc3.raiseIntentForContext(EXAMPLE_CONTEXTS_MAP.get(selectIntentForContext.value).context);
+            const intentResolution = await fdc3.raiseIntentForContext(CONTEXTS_MAP.get(selectIntentForContext.value).context);
         } catch (error) {
             setTextArea(error.message);
         }
@@ -202,7 +203,7 @@ const setupFindIntentsByContextListener = async () => {
     selectFindIntentsByContext.onchange = async () => {
         try {
             const contextType = selectFindIntentsByContext.value;
-            const appIntents = await fdc3.findIntentsByContext(EXAMPLE_CONTEXTS_MAP.get(contextType).context);
+            const appIntents = await fdc3.findIntentsByContext(CONTEXTS_MAP.get(contextType).context);
             const appIntentsString = appIntents.map(appIntent => JSON.stringify(appIntent, null, 2)).join('\n');
             setTextArea(appIntentsString);
         } catch (error) {
@@ -264,13 +265,13 @@ const populateDropDowns = () => {
         selectFindIntent.add(new Option(intent, intent));
     });
 
-    EXAMPLE_CONTEXTS_MAP.forEach((contextTypeInfo, contextType) => {
+    CONTEXTS_MAP.forEach((contextTypeInfo, contextType) => {
         selectBroadcastContext.add(new Option(contextType, contextType));
         selectIntentForContext.add(new Option(contextType, contextType));
         selectFindIntentsByContext.add(new Option(contextType, contextType));
     });
 
-    APP_DIRECTORY.forEach(appInfo => {
+    APP_DIRECTORY.apps.forEach(appInfo => {
         selectOpen.add(new Option(appInfo.appId, appInfo.appId));
         selectFindInstances.add(new Option(appInfo.appId, appInfo.appId));
     });
