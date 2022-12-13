@@ -1,7 +1,7 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import * as FDC3 from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
-import {  APP_DIRECTORY, showPicker, findAppIdByUrl, findUrlByAppId, standardizeUrl } from './utils';
-import { CONTEXTS_MAP, INTENTS_METADATA_MAP,  } from "./contexts_intents";
+import { APP_DIRECTORY, showPicker, findAppIdByUrl, findUrlByAppId, standardizeUrl, getViewName } from './utils';
+import { CONTEXTS_MAP, INTENTS_METADATA_MAP } from "./contexts_intents";
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
@@ -129,11 +129,33 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
             }
         }
 
-        async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
-            const appInfo = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === app.appId);
-            const platform = fin.Platform.getCurrentSync();
+        async isConnectionAuthorized(id, payload) {
+            const { uuid, name } = id;
+            fin.InterApplicationBus.publish(`${uuid}-${name}-connected`, {});
+            return true;
+        }
 
-            await platform.createView({ url: appInfo.url, target: null });
+        async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
+            // we need to figure out how to pass context directly to the app, FDC3 has no concept of this
+            const appInfo = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === app.appId);
+            const { appId, url } = appInfo
+            const platform = fin.Platform.getCurrentSync();
+            const viewName = getViewName();
+            const clientReadyPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `${fin.me.identity.uuid}-${viewName}-connected`, r));
+
+            try {
+                const view = await platform.createView({ name: viewName, url, target: null });
+                await clientReadyPromise;
+                const allClientInfo = await super.getAllClientInfo();
+                const viewClientInfo = allClientInfo.find(clientInfo => clientInfo.name === view.identity.name);
+
+                return {
+                    appId,
+                    instanceId: viewClientInfo.endpointId
+                }
+            } catch (error) {
+                throw new Error(error.message);
+            }
         }
 
         async fdc3HandleGetAppMetadata(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {

@@ -153,6 +153,7 @@ const setupOpenListener = async () => {
 
         try {
             const appMetadata = await fdc3.open({ appId: selectedApp });
+            setTextArea(JSON.stringify(appMetadata, null, 2));
         } catch (error) {
             setTextArea(error.message);
         }

@@ -5,11 +5,15 @@ declare const fin: OpenFin.Fin<"window" | "view">;
 
 export const APP_DIRECTORY = require('../../public/app_directory.json');
 
+export const getViewName = () => {
+    return `view-${crypto.randomUUID()}`;
+}
+
 export const showPicker = async (modalParentIdentity, type, payload?): Promise<OpenFin.ClientInfo | string | void> => {
     const pickerName = `picker-${modalParentIdentity.name}-${modalParentIdentity.uuid}`;
     const providerName = `${pickerName}-provider`;
     const queryString = new URLSearchParams(`provider=${providerName}&type=${type}`);
-    
+
     if (type === 'app' && payload) {
         const { allClientInfo } = payload;
         const onlyViews = allClientInfo.filter(client => client.entityType === 'view');
@@ -47,38 +51,41 @@ export const showPicker = async (modalParentIdentity, type, payload?): Promise<O
 }
 
 export const getPlatformOptions = () => {
-	return {
-		interopOverride
-	};
+    return {
+        interopOverride
+    };
 };
 
 export const getWindowOptions = (fdc3InteropApi = '2.0') => {
-	const viewComponents = APP_DIRECTORY.apps.map((appInfo) => {
-		return {
-			type: 'component',
-			componentName: 'view',
-			componentState: { fdc3InteropApi, url: appInfo.url }
-		}
-	});
+    const viewComponents = APP_DIRECTORY.apps.map((appInfo) => {
+        return {
+            type: 'component',
+            componentName: 'view',
+            componentState: {
+                fdc3InteropApi,
+                url: appInfo.url,
+                name: getViewName()
+            }
+        }
+    });
 
-	return {
+    return {
         fdc3InteropApi,
-		layout: {
-			content: [
-				{
-					type: 'row',
-					content: viewComponents
-				}
-			]
-		}
-	}
+        layout: {
+            content: [
+                {
+                    type: 'row',
+                    content: viewComponents
+                }
+            ]
+        }
+    }
 };
 
 export const createWindow = async (options = getWindowOptions()) => {
-	const platform = fin.Platform.getCurrentSync();
-	return platform.createWindow(options);
+    const platform = fin.Platform.getCurrentSync();
+    return platform.createWindow(options);
 };
-
 
 export const findAppIdByUrl = (url: string): string => {
     return APP_DIRECTORY.apps.find(appInfo => standardizeUrl(appInfo.url) === standardizeUrl(url)).appId;
