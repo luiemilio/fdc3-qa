@@ -3,7 +3,8 @@ import { interopOverride } from './interop-broker-override';
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
-export const APP_DIRECTORY = require('../../public/app_directory.json');
+// export const APP_DIRECTORY = require('../../public/app_directory.json');
+export const APP_DIRECTORY = require('../../public/local-conformance-1_2.v2.json');
 
 export const getViewName = () => {
     return `view-${crypto.randomUUID()}`;
@@ -56,18 +57,30 @@ export const getPlatformOptions = () => {
     };
 };
 
-export const getWindowOptions = (fdc3InteropApi = '2.0') => {
-    const viewComponents = APP_DIRECTORY.apps.map((appInfo) => {
-        return {
-            type: 'component',
-            componentName: 'view',
-            componentState: {
-                fdc3InteropApi,
-                url: appInfo.url,
-                name: getViewName()
-            }
-        }
-    });
+export const getWindowOptions = (fdc3InteropApi = '1.2') => {
+    // const viewComponents = APP_DIRECTORY.apps.map((appInfo) => {
+    //     return {
+    //         type: 'component',
+    //         componentName: 'view',
+    //         componentState: {
+    //             fdc3InteropApi,
+    //             url: appInfo.url,
+    //             name: getViewName()
+    //         }
+    //     }
+    // });
+
+    // return {
+    //     fdc3InteropApi,
+    //     layout: {
+    //         content: [
+    //             {
+    //                 type: 'row',
+    //                 content: viewComponents
+    //             }
+    //         ]
+    //     }
+    // }
 
     return {
         fdc3InteropApi,
@@ -75,11 +88,22 @@ export const getWindowOptions = (fdc3InteropApi = '2.0') => {
             content: [
                 {
                     type: 'row',
-                    content: viewComponents
+                    content: [
+                        {
+                            type: 'component',
+                            componentName: 'view',
+                            componentState: {
+                                fdc3InteropApi,
+                                url: 'http://localhost:3001/v1.2/app/index.html',
+                                name: getViewName()
+                            }
+                        }
+                    ]
                 }
             ]
         }
     }
+
 };
 
 export const createWindow = async (options = getWindowOptions()) => {
@@ -88,11 +112,11 @@ export const createWindow = async (options = getWindowOptions()) => {
 };
 
 export const findAppIdByUrl = (url: string): string => {
-    return APP_DIRECTORY.apps.find(appInfo => standardizeUrl(appInfo.url) === standardizeUrl(url)).appId;
+    return APP_DIRECTORY.applications.find(appInfo => standardizeUrl(appInfo.details.url) === standardizeUrl(url)).appId;
 }
 
 export const findUrlByAppId = (appId: string): string => {
-    const url = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === appId).url;
+    const url = APP_DIRECTORY.applications.find(appInfo => appInfo.appId === appId).details.url;
     return standardizeUrl(url);
 }
 

@@ -1,7 +1,7 @@
 {
 	"runtime": {
 		"arguments": "--v=1 --inspect",
-		"version": "beta"
+		"version": "canary"
 	},
 	"platform": {
 		"uuid": "fdc3-qa",
@@ -9,7 +9,7 @@
 		"providerUrl": "http://localhost:5050/html/provider.html",
 		"apiDiagnostics": false,
 		"defaultWindowOptions": {
-			"url": "http://localhost:5050/html/window.html",
+			"_url": "http://localhost:5050/html/window.html",
 			"contextMenu": true,
 			"defaultWidth": 1559,
 			"defaultHeight": 925,
@@ -20,10 +20,10 @@
 			"backgroundThrottling": true,
 			"minHeight": 445,
 			"minWidth": 354,
-			"fdc3InteropApi": "2.0"
+			"fdc3InteropApi": "1.2"
 		},
 		"defaultViewOptions": {
-			"fdc3InteropApi": "2.0"
+			"fdc3InteropApi": "1.2"
 		},
 		"interopBrokerConfiguration": {
 			"logging": {
