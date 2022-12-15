@@ -1,40 +1,42 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import * as FDC3 from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
-import { APP_DIRECTORY, showPicker, findAppIdByUrl, findUrlByAppId, standardizeUrl, getViewName } from './utils';
-import { CONTEXTS_MAP, INTENTS_METADATA_MAP, contextTypes } from "./contexts_intents";
+import { APP_DIRECTORY, getViewName } from './utils';
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
 export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBroker }) => {
     class Override extends InteropBroker {
-        async setContext(setContextOptions, clientIdentity) {
-            return super.setContext(setContextOptions, clientIdentity);
-        }
-
         async handleFiredIntent(intent, clientIdentity) {
-            const { name: intentName } = intent;
-            const { uuid, name } = clientIdentity;
-            const allClientInfo = await super.getAllClientInfo();
-            const senderUrl = allClientInfo.find(clientInfo => clientInfo.uuid === uuid && clientInfo.name === name).connectionUrl;
+            const { name: intentName, metadata } = intent;
 
-            const appForIntent = APP_DIRECTORY.applications.find((appInfo) => {
-                console.log(appInfo);
-                
-                if (appInfo.interop?.intents?.listensFor) {
-                    const { interop: { intents: { listensFor } }, details: { url } } = appInfo;
-                    return listensFor.hasOwnProperty(intentName) && listensFor[intentName].contexts.includes(intent.context.type);
+            const targetAppInfo = APP_DIRECTORY.applications.find((appInfo) => {
+                const { appId, name, interop } = appInfo;
+
+                if (interop?.intents?.listensFor) {
+                    const { intents: { listensFor } } = interop;
+                    const canHandleIntent = listensFor.hasOwnProperty(intentName) && listensFor[intentName].contexts.includes(intent.context.type);
+
+                    if (metadata?.target) {
+                        const { target } = metadata;
+                        const searchTerm = typeof target === 'string' ? target : target.appId || target.name
+                        const hasApp = appId === searchTerm || name === searchTerm;
+
+                        return hasApp && canHandleIntent;
+                    }
+
+                    return canHandleIntent;
                 }
             });
 
-            if (!appForIntent) {
+            if (!targetAppInfo) {
                 throw new Error('NoAppsFound');
             }
 
-            const { details: { url }, version, name: appForIntentName, appId } = appForIntent;
+            const { details: { url }, version, name: appForIntentName, appId } = targetAppInfo;
 
             const platform = fin.Platform.getCurrentSync();
             const viewName = getViewName();
-            const clientReadyPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `connected-${fin.me.identity.uuid}-${viewName}`, r));
+            const clientReadyPromise = this.setupClientReadyPromise(fin.me.identity.uuid, viewName);
 
             try {
                 await platform.createView({ name: viewName, url, target: null });
@@ -55,9 +57,11 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         async handleFiredIntentForContext(contextForIntent: OpenFin.ContextForIntent<any>, clientIdentity: OpenFin.ClientIdentity & { entityType: string }): Promise<unknown> {
             const appForIntent = APP_DIRECTORY.applications.find((appInfo) => {
                 if (appInfo.interop?.intents?.listensFor) {
-                    const { interop: { intents: { listensFor }}} = appInfo;
-                    console.log('########## appInfo', appInfo);
-                    return Object.values(listensFor).some((intentInfo: any) => intentInfo.contexts.includes(contextForIntent.type));
+                    const { interop: { intents: { listensFor } } } = appInfo;
+
+                    return Object.values(listensFor).some((intentInfo: any) => { 
+                        intentInfo.contexts.includes(contextForIntent.type);
+                    });
                 }
             });
 
@@ -69,7 +73,7 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
 
             const platform = fin.Platform.getCurrentSync();
             const viewName = getViewName();
-            const clientReadyPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `connected-${fin.me.identity.uuid}-${viewName}`, r));
+            const clientReadyPromise = this.setupClientReadyPromise(fin.me.identity.uuid, viewName);
 
             try {
                 await platform.createView({ name: viewName, url, target: null });
@@ -87,26 +91,6 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
             }
         }
 
-        async fdc3HandleGetInfo(payload: { fdc3Version: string; }, clientIdentity: OpenFin.ClientIdentity): Promise<FDC3.ImplementationMetadata> {
-            const defaultInfo: FDC3.ImplementationMetadata = await super.fdc3HandleGetInfo(payload, clientIdentity);
-            const allClientInfo = await super.getAllClientInfo();
-            const { connectionUrl, endpointId: instanceId } = allClientInfo.find(clientInfo => clientInfo.name === clientIdentity.name);
-            const appId = findAppIdByUrl(connectionUrl);
-
-            return {
-                ...defaultInfo,
-                optionalFeatures: {
-                    ...defaultInfo.optionalFeatures,
-                    "OriginatingAppMetadata": true
-                },
-                appMetadata: {
-                    ...defaultInfo.appMetadata,
-                    appId,
-                    instanceId
-                }
-            }
-        }
-
         async isConnectionAuthorized(id, payload) {
             const { uuid, name } = id;
             fin.InterApplicationBus.publish(`connected-${uuid}-${name}`, {});
@@ -120,13 +104,13 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
             const { contextType, handlerId } = payload;
             const { uuid, name } = clientIdentity;
             const topic = `${contextType || 'invokeContextHandler'}-${uuid}-${name}`;
+
             fin.InterApplicationBus.publish(topic, { handlerId, clientIdentity });
+
             super.contextHandlerRegistered(payload, clientIdentity);
         }
 
         async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
-            // we need to figure out how to pass context directly to the app, FDC3 has no concept of this
-            // const appInfo = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === app.appId);
             const searchTerm = typeof app === 'string' ? app : app.appId || app.name
 
             const appInfo = APP_DIRECTORY.applications.find(appInfo => appInfo.appId === searchTerm || appInfo.name === searchTerm);
@@ -138,20 +122,10 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
             const { appId, details: { url } } = appInfo
             const platform = fin.Platform.getCurrentSync();
             const viewName = getViewName();
-            const clientReadyPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `connected-${fin.me.identity.uuid}-${viewName}`, r));
+            const clientReadyPromise = this.setupClientReadyPromise(fin.me.identity.uuid, viewName);
 
             if (context) {
-                const { type } = context;
-                const globalHandlerRegisteredPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `invokeContextHandler-${fin.me.identity.uuid}-${viewName}`, r));
-                const specificHandlerRegisteredPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `${type}-${fin.me.identity.uuid}-${viewName}`, r));
-
-                const invokeHandler = (payload: any) => {
-                    const { handlerId, clientIdentity } = payload;
-                    this.invokeContextHandler(clientIdentity, handlerId, context);
-                }
-
-                globalHandlerRegisteredPromise.then(invokeHandler);
-                specificHandlerRegisteredPromise.then(invokeHandler);
+                this.setupContextHandlerPromises(fin.me.identity.uuid, viewName, context);
             }
 
             try {
@@ -169,70 +143,117 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
             }
         }
 
-        async fdc3HandleGetAppMetadata(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
-            // return APP_DIRECTORY.apps.find(appInfo => appInfo.appId === app.appId);
-            return APP_DIRECTORY.applications.find(appInfo => appInfo.appId === app.appId);
-        }
-
-        async fdc3HandleFindInstances(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
-            const allClients = await super.getAllClientInfo();
-            const { appId } = app;
-            const url = findUrlByAppId(appId);
-
-            return allClients
-                .filter(clientInfo => {
-                    return standardizeUrl(clientInfo.connectionUrl) === url
-                })
-                .map(clientInfo => {
-                    return {
-                        appId,
-                        instanceId: clientInfo.endpointId
-                    }
-                });
-        }
-
         async handleInfoForIntent(options: OpenFin.InfoForIntentOptions<OpenFin.IntentMetadata<any>>, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
-            const allClientInfo = await super.getAllClientInfo();
+            const { name: intentName, context, metadata } = options;
 
-            const apps = allClientInfo
-                .filter(clientInfo => clientInfo.entityType === 'view')
-                .map((clientInfo) => {
-                    const { endpointId: instanceId, connectionUrl } = clientInfo;
-                    const appId = findAppIdByUrl(connectionUrl);
+            let intentInfo;
 
-                    return {
-                        appId,
-                        instanceId
+            const apps = APP_DIRECTORY.applications.filter((appInfo) => {
+                const { appId, name, interop } = appInfo;
+
+                if (interop?.intents?.listensFor) {
+                    const { intents: { listensFor } } = interop;
+                    const hasIntent = listensFor.hasOwnProperty(intentName);
+                    const conditionsToCheck = [hasIntent];
+
+                    if (context) {
+                        const hasContext = listensFor[intentName]?.contexts?.includes(context.type);
+                        conditionsToCheck.push(hasContext);
                     }
-                });
 
-            return {
-                intent: INTENTS_METADATA_MAP.get(options.name),
-                apps
+                    if (metadata?.target) {
+                        const { target } = metadata;
+                        const searchTerm = typeof target === 'string' ? target : target.appId || target.name
+                        const hasApp = appId === searchTerm || name === searchTerm;
+
+                        conditionsToCheck.push(hasApp);
+                    }
+
+                    const validApp = conditionsToCheck.every(condition => condition);
+
+                    if (validApp && !intentInfo) {
+                        intentInfo = {
+                            name: intentName,
+                            displayName: listensFor?.[intentName]?.displayName
+                        }
+                    }
+
+                    return validApp;
+                }
+            }).map((appInfo) => {
+                const { name, appId, version, title, tooltip, description, icons, images } = appInfo;
+                return { name, appId, version, title, tooltip, description, icons, images };
+            });
+
+            if (apps.length === 0) {
+                throw new Error('NoAppsFound');
             }
+
+            const appIntent = {
+                intent: intentInfo,
+                apps
+            };
+
+            return appIntent;
         }
 
         async handleInfoForIntentsByContext(context: OpenFin.Context, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
-            const allClientInfo = await super.getAllClientInfo();
+            const appIntentsMap = new Map();
 
-            const apps = allClientInfo
-                .filter(clientInfo => clientInfo.entityType === 'view')
-                .map((clientInfo) => {
-                    const { endpointId: instanceId, connectionUrl } = clientInfo;
-                    const appId = findAppIdByUrl(connectionUrl);
+            APP_DIRECTORY.applications.forEach((appInfo) => {
+                if (appInfo.interop?.intents?.listensFor) {
+                    const { interop: { intents: { listensFor } } } = appInfo;
 
-                    return {
-                        appId,
-                        instanceId
+                    for (const [intentName, intentInfo] of Object.entries(listensFor)) {
+                        const { contexts, displayName } = intentInfo as any;
+
+                        if (contexts.includes(context.type)) {
+                            if (!appIntentsMap.has(intentName)) {
+                                appIntentsMap.set(intentName, { intent: { name: intentName, displayName }, apps: [appInfo] })
+                            } else {
+                                const appIntent = appIntentsMap.get(intentName);
+                                appIntent.apps.push(appInfo);
+                            }
+                        }
                     }
-                });
-
-            return [...INTENTS_METADATA_MAP.values()].map((intentMetadata) => {
-                return {
-                    intent: intentMetadata,
-                    apps
                 }
-            })
+            });
+
+            const appIntents = [...appIntentsMap.values()];
+
+            if (appIntents.length === 0) {
+                throw new Error('NoAppsFound');
+            }
+
+            return appIntents;
+        }
+
+        setupClientReadyPromise(uuid: string, name: string): Promise<void> {
+            return new Promise((r) => { 
+                fin.InterApplicationBus.subscribe({ uuid: '*' }, `connected-${uuid}-${name}`, r);
+            });
+        }
+        
+        setupContextHandlerPromises(uuid: string, name: string, context: OpenFin.Context): void {
+            const { type } = context;
+
+            const invokeHandler = (payload: any) => {
+                const { handlerId, clientIdentity } = payload;
+                super.invokeContextHandler(clientIdentity, handlerId, context);
+            }
+
+            const globalHandlerRegisteredPromise = new Promise((r) => {
+                const topic = `invokeContextHandler-${uuid}-${name}`;
+                fin.InterApplicationBus.subscribe({ uuid: '*' }, topic, r)
+            });
+
+            const specificHandlerRegisteredPromise = new Promise((r) => {
+                const topic = `${type}-${uuid}-${name}`
+                fin.InterApplicationBus.subscribe({ uuid: '*' }, topic, r)
+            });
+
+            globalHandlerRegisteredPromise.then(invokeHandler);
+            specificHandlerRegisteredPromise.then(invokeHandler);
         }
     }
 
