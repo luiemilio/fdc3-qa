@@ -1,7 +1,7 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import * as FDC3 from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
 import { APP_DIRECTORY, showPicker, findAppIdByUrl, findUrlByAppId, standardizeUrl, getViewName } from './utils';
-import { CONTEXTS_MAP, INTENTS_METADATA_MAP } from "./contexts_intents";
+import { CONTEXTS_MAP, INTENTS_METADATA_MAP, INTENT_CONTEXT_MAP } from "./contexts_intents";
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
@@ -72,27 +72,25 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
             const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
             const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
 
-            const contextWithMetadata = {
-                ...contextForIntent,
-                contextMetadata: {
-                    source: {
-                        appId: raiserAppId,
-                        instanceId: clientIdentity.endpointId
-                    }
-                }
-            };
-
-            const intent = {
-                name: CONTEXTS_MAP.get(contextForIntent.type).intent,
-                context: contextWithMetadata
-            }
-
             if (!targetApp) {
                 throw new Error('NoAppFound');
             }
 
             if (typeof targetApp !== 'string') {
                 try {
+                    const client = await fin.InterApplicationBus.Channel.connect(`provider-${targetApp.name}`);
+                    const intentSelected = await client.dispatch('getSelectedIntent');
+                    const contextWithMetadata = {
+                        ...INTENT_CONTEXT_MAP.get(intentSelected),
+                        ...contextForIntent,
+                        contextMetadata: {
+                            source: {
+                                appId: raiserAppId,
+                                instanceId: clientIdentity.endpointId
+                            }
+                        }
+                    };
+                    const intent = { name: intentSelected,  context: contextWithMetadata};
                     const targetAppId = findAppIdByUrl(targetApp.connectionUrl);
                     await super.setIntentTarget(intent, targetApp);
 

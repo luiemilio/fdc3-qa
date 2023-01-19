@@ -6,6 +6,14 @@ import { CONTEXTS_MAP, INTENT_CONTEXT_MAP } from './contexts_intents';
 declare const fin: OpenFin.Fin<"window" | "view">;
 declare const fdc3: DesktopAgent;
 
+let SELECTED_INTENT;
+
+const provider = await fin.InterApplicationBus.Channel.create(`provider-${fin.me.identity.name}`);
+
+provider.register('getSelectedIntent', () => {
+    return SELECTED_INTENT;
+});
+
 const setTextArea = (message) => {
     const resultTextArea: HTMLTextAreaElement = document.querySelector('#result-textarea');
     resultTextArea.value = message;
@@ -48,6 +56,7 @@ const setupIntentListener = async () => {
 
     selectIntent.onchange = async () => {
         const intent = selectIntent.value;
+        SELECTED_INTENT = selectIntent.value;
 
         const intentHandler = async (context, contextMetadata) => {
             setTextArea(`Handled ${intent} intent with the following context and metadata:\ncontext: ${JSON.stringify(context, null, 2)}\ncontextMetadata: ${JSON.stringify(contextMetadata, null, 2)}`);

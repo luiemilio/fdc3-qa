@@ -26,7 +26,7 @@ export const INTENTS_METADATA_MAP = new Map([
 ]);
 
 export const CONTEXTS_MAP = new Map([
-['fdc3.contact', { context: contact, intent: 'StartCall' }],
+    ['fdc3.contact', { context: contact, intent: 'StartCall' }],
     ['fdc3.instrument', { context: instrument, intent: 'ViewChart' }]
 ]);
 
