@@ -6,7 +6,11 @@
             "title": "FDC3 QA - Client App",
             "description": "Client to test FDC3 functionality",
             "version": "1.0",
-            "url": "http://localhost:5050/html/fdc3-client.html"
+            "url": "http://localhost:5050/html/fdc3-client.html",
+            "contextMapping": {
+                "fdc3.instrument": "ViewChart",
+                "fdc3.contact": "StartCall"
+            }
         },
         {
             "appId": "fdc3-client-two",
@@ -14,7 +18,11 @@
             "title": "FDC3 QA - Client App 2",
             "description": "Second app just to test launching more than one app",
             "version": "1.5",
-            "url": "http://localhost:5050/html/fdc3-client-2.html"
+            "url": "http://localhost:5050/html/fdc3-client-2.html",
+            "contextMapping": {
+                "fdc3.instrument": "ViewNews",
+                "fdc3.contact": "StartCall"
+            }
         }
     ]
 }

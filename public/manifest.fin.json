@@ -1,7 +1,7 @@
 {
 	"runtime": {
 		"arguments": "--v=1 --inspect",
-		"version": "beta"
+		"version": "29.108.73.14"
 	},
 	"platform": {
 		"uuid": "fdc3-qa",

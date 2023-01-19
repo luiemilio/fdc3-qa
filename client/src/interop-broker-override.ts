@@ -1,7 +1,7 @@
 import * as OpenFin from "@openfin/core/src/OpenFin";
 import * as FDC3 from '@openfin/core/src/api/interop/fdc3/shapes/fdc3v2';
-import { APP_DIRECTORY, showPicker, findAppIdByUrl, findUrlByAppId, standardizeUrl, getViewName } from './utils';
-import { CONTEXTS_MAP, INTENTS_METADATA_MAP, INTENT_CONTEXT_MAP } from "./contexts_intents";
+import { APP_DIRECTORY, showPicker, findAppIdByUrl, findUrlByAppId, standardizeUrl, getViewName, findIntentName } from './utils';
+import { INTENTS_METADATA_MAP, INTENT_CONTEXT_MAP } from "./contexts_intents";
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
@@ -65,45 +65,64 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         }
 
         async handleFiredIntentForContext(contextForIntent: OpenFin.ContextForIntent<any>, clientIdentity: OpenFin.ClientIdentity & { entityType: string }): Promise<unknown> {
-            const { entityType } = clientIdentity;
+            const { metadata: { target: { app } }, type } = contextForIntent;
             const allClientInfo = await super.getAllClientInfo();
             const raiserClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
             const raiserAppId = findAppIdByUrl(raiserClientInfo.connectionUrl);
-            const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
-            const targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
+            let targetApp;
+            let launchApp = false;
+            let intentName;
+            let targetAppId;
+
+            if (app) {
+                targetAppId = app.appId;
+                const viewName = getViewName();
+                const targetAppUrl = findUrlByAppId(app.appId);
+                targetApp = targetAppUrl ? { uuid: fin.me.identity.uuid, name: viewName, url: targetAppUrl, target: null } : undefined;
+                launchApp = true;
+                intentName = findIntentName(app.appId, type);
+            } else {
+                const { entityType } = clientIdentity;
+                const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
+                targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
+                targetAppId = findAppIdByUrl(targetApp.connectionUrl);
+                const client = await fin.InterApplicationBus.Channel.connect(`provider-${targetApp.name}`);
+                intentName = await client.dispatch('getSelectedIntent');
+            }
 
             if (!targetApp) {
                 throw new Error('NoAppFound');
             }
 
-            if (typeof targetApp !== 'string') {
-                try {
-                    const client = await fin.InterApplicationBus.Channel.connect(`provider-${targetApp.name}`);
-                    const intentSelected = await client.dispatch('getSelectedIntent');
-                    const contextWithMetadata = {
-                        ...INTENT_CONTEXT_MAP.get(intentSelected),
-                        ...contextForIntent,
-                        contextMetadata: {
-                            source: {
-                                appId: raiserAppId,
-                                instanceId: clientIdentity.endpointId
-                            }
-                        }
-                    };
-                    const intent = { name: intentSelected,  context: contextWithMetadata};
-                    const targetAppId = findAppIdByUrl(targetApp.connectionUrl);
-                    await super.setIntentTarget(intent, targetApp);
-
-                    return {
+            try {
+                const contextWithMetadata = {
+                    ...INTENT_CONTEXT_MAP.get(intentName),
+                    ...contextForIntent,
+                    contextMetadata: {
                         source: {
-                            appId: targetAppId,
-                            instanceId: targetApp.endpointId
-                        },
-                        intent: intent.name
+                            appId: raiserAppId,
+                            instanceId: clientIdentity.endpointId
+                        }
                     }
-                } catch (error) {
-                    throw new Error(error.message);
+                };
+
+                const intent = { name: intentName, context: contextWithMetadata };
+                await super.setIntentTarget(intent, targetApp);
+
+                if (launchApp) {
+                    const platform = fin.Platform.getCurrentSync();
+                    platform.createView(targetApp);
                 }
+
+                return {
+                    source: {
+                        appId: targetAppId,
+                        instanceId: targetApp.endpointId
+                    },
+                    intent: intent.name
+                }
+            } catch (error) {
+                throw new Error(error.message);
             }
         }
 
@@ -136,11 +155,11 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
             // we need to figure out how to pass context directly to the app, FDC3 has no concept of this
             const appInfo = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === app.appId);
-            
+
             if (!appInfo) {
                 throw new Error('AppNotFound');
             }
-            
+
             const { appId, url } = appInfo;
             const platform = fin.Platform.getCurrentSync();
             const viewName = getViewName();
@@ -170,7 +189,7 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
                 const allClients = await super.getAllClientInfo();
                 const { appId } = app;
                 const url = findUrlByAppId(appId);
-    
+
                 const instances = allClients
                     .filter(clientInfo => {
                         return standardizeUrl(clientInfo.connectionUrl) === url
@@ -181,7 +200,7 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
                             instanceId: clientInfo.endpointId
                         }
                     });
-                
+
                 return instances
             } catch (error) {
                 throw new Error('ResolverUnavailable');
@@ -191,23 +210,23 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         async handleInfoForIntent(options: OpenFin.InfoForIntentOptions<OpenFin.IntentMetadata<any>>, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
             try {
                 const allClientInfo = await super.getAllClientInfo();
-    
+
                 const apps = allClientInfo
                     .filter(clientInfo => clientInfo.entityType === 'view')
                     .map((clientInfo) => {
                         const { endpointId: instanceId, connectionUrl } = clientInfo;
                         const appId = findAppIdByUrl(connectionUrl);
-    
+
                         return {
                             appId,
                             instanceId
                         }
                     });
-    
+
                 if (apps.length === 0) {
                     throw new Error('NoAppsFound');
                 }
-    
+
                 return {
                     intent: INTENTS_METADATA_MAP.get(options.name),
                     apps

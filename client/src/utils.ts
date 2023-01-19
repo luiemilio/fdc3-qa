@@ -98,4 +98,12 @@ export const findUrlByAppId = (appId: string): string => {
 
 export const standardizeUrl = (url: string): string => {
     return new URL(url).href;
-} 
+}
+
+export const findIntentName = (appId, contextType): string => {
+    return APP_DIRECTORY.apps.find(appInfo => appInfo.appId === appId).contextMapping[contextType];
+}
+
+export const findAppInfoByAppId = (appId: string): any => {
+    return APP_DIRECTORY.apps.find(appInfo => appInfo.appId === appId);
+}
