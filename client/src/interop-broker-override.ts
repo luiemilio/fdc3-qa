@@ -136,7 +136,12 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         async fdc3HandleOpen({ app, context }: { app: any; context: OpenFin.Context; }, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
             // we need to figure out how to pass context directly to the app, FDC3 has no concept of this
             const appInfo = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === app.appId);
-            const { appId, url } = appInfo
+            
+            if (!appInfo) {
+                throw new Error('AppNotFound');
+            }
+            
+            const { appId, url } = appInfo;
             const platform = fin.Platform.getCurrentSync();
             const viewName = getViewName();
             const clientReadyPromise = new Promise((r) => fin.InterApplicationBus.subscribe({ uuid: '*' }, `${fin.me.identity.uuid}-${viewName}-connected`, r));
@@ -152,7 +157,7 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
                     instanceId: viewClientInfo.endpointId
                 }
             } catch (error) {
-                throw new Error(error.message);
+                throw new Error('ErrorOnLaunch');
             }
         }
 
@@ -161,40 +166,54 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         }
 
         async fdc3HandleFindInstances(app: FDC3.AppIdentifier, clientIdentity: OpenFin.ClientIdentity): Promise<unknown> {
-            const allClients = await super.getAllClientInfo();
-            const { appId } = app;
-            const url = findUrlByAppId(appId);
-
-            return allClients
-                .filter(clientInfo => {
-                    return standardizeUrl(clientInfo.connectionUrl) === url
-                })
-                .map(clientInfo => {
-                    return {
-                        appId,
-                        instanceId: clientInfo.endpointId
-                    }
-                });
+            try {
+                const allClients = await super.getAllClientInfo();
+                const { appId } = app;
+                const url = findUrlByAppId(appId);
+    
+                const instances = allClients
+                    .filter(clientInfo => {
+                        return standardizeUrl(clientInfo.connectionUrl) === url
+                    })
+                    .map(clientInfo => {
+                        return {
+                            appId,
+                            instanceId: clientInfo.endpointId
+                        }
+                    });
+                
+                return instances
+            } catch (error) {
+                throw new Error('ResolverUnavailable');
+            }
         }
 
         async handleInfoForIntent(options: OpenFin.InfoForIntentOptions<OpenFin.IntentMetadata<any>>, clientIdentity: OpenFin.ClientIdentity): Promise<any> {
-            const allClientInfo = await super.getAllClientInfo();
-
-            const apps = allClientInfo
-                .filter(clientInfo => clientInfo.entityType === 'view')
-                .map((clientInfo) => {
-                    const { endpointId: instanceId, connectionUrl } = clientInfo;
-                    const appId = findAppIdByUrl(connectionUrl);
-
-                    return {
-                        appId,
-                        instanceId
-                    }
-                });
-
-            return {
-                intent: INTENTS_METADATA_MAP.get(options.name),
-                apps
+            try {
+                const allClientInfo = await super.getAllClientInfo();
+    
+                const apps = allClientInfo
+                    .filter(clientInfo => clientInfo.entityType === 'view')
+                    .map((clientInfo) => {
+                        const { endpointId: instanceId, connectionUrl } = clientInfo;
+                        const appId = findAppIdByUrl(connectionUrl);
+    
+                        return {
+                            appId,
+                            instanceId
+                        }
+                    });
+    
+                if (apps.length === 0) {
+                    throw new Error('NoAppsFound');
+                }
+    
+                return {
+                    intent: INTENTS_METADATA_MAP.get(options.name),
+                    apps
+                }
+            } catch (error) {
+                throw new Error('ResolverUnavailable');
             }
         }
 
@@ -212,6 +231,10 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
                         instanceId
                     }
                 });
+
+            if (apps.length === 0) {
+                throw new Error('NoAppsFound');
+            }
 
             return [...INTENTS_METADATA_MAP.values()].map((intentMetadata) => {
                 return {
