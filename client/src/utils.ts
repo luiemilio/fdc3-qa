@@ -87,20 +87,20 @@ export const createWindow = async (options = getWindowOptions()) => {
     return platform.createWindow(options);
 };
 
-export const findAppIdByUrl = (url: string): string => {
+export const findAppIdByUrl = (url: string): string | undefined => {
     return APP_DIRECTORY.apps.find(appInfo => standardizeUrl(appInfo.url) === standardizeUrl(url)).appId;
 }
 
-export const findUrlByAppId = (appId: string): string => {
-    const url = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === appId).url;
-    return standardizeUrl(url);
+export const findUrlByAppId = (appId: string): string | undefined => {
+    const appInfo = APP_DIRECTORY.apps.find(appInfo => appInfo.appId === appId);
+    return appInfo?.url ? standardizeUrl(appInfo.url) : undefined;
 }
 
 export const standardizeUrl = (url: string): string => {
     return new URL(url).href;
 }
 
-export const findIntentName = (appId, contextType): string => {
+export const findIntentName = (appId, contextType): string | undefined => {
     return APP_DIRECTORY.apps.find(appInfo => appInfo.appId === appId).contextMapping[contextType];
 }
 

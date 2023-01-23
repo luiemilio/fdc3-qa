@@ -5,9 +5,10 @@ import { INTENTS_METADATA_MAP, INTENT_CONTEXT_MAP } from "./contexts_intents";
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
-export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBroker }) => {
+export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBroker }, wire: any, getProvider: any, options: { contextGroups: any[]; }) => {
     class Override extends InteropBroker {
         async setContext(setContextOptions, clientIdentity) {
+            options.contextGroups = [];  
             const allClientInfo = await super.getAllClientInfo();
             const broadcasterClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
             const appId = findAppIdByUrl(broadcasterClientInfo.connectionUrl);
@@ -65,33 +66,53 @@ export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBro
         }
 
         async handleFiredIntentForContext(contextForIntent: OpenFin.ContextForIntent<any>, clientIdentity: OpenFin.ClientIdentity & { entityType: string }): Promise<unknown> {
-            const { metadata: { target: { app } }, type } = contextForIntent;
+            const { metadata, type } = contextForIntent;
             const allClientInfo = await super.getAllClientInfo();
             const raiserClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
             const raiserAppId = findAppIdByUrl(raiserClientInfo.connectionUrl);
-            let targetApp;
             let launchApp = false;
+            let targetApp;
             let intentName;
             let targetAppId;
+            let targetAppInstanceId;
 
-            if (app) {
+            if (metadata?.target?.app) {
+                const { target: { app } } = metadata;
                 targetAppId = app.appId;
-                const viewName = getViewName();
-                const targetAppUrl = findUrlByAppId(app.appId);
-                targetApp = targetAppUrl ? { uuid: fin.me.identity.uuid, name: viewName, url: targetAppUrl, target: null } : undefined;
-                launchApp = true;
+
+                if (app.instanceId) {
+                    targetApp = allClientInfo.find(clientInfo => clientInfo.endpointId === app.instanceId);
+                    
+                    if(!targetApp) {
+                        throw new Error('TargetInstanceUnavailable');
+                    }
+                    
+                    targetAppInstanceId = app.instanceId;
+                } else {
+                    const viewName = getViewName();
+                    const targetAppUrl = findUrlByAppId(app.appId);
+
+                    if (!targetAppUrl) {
+                        throw new Error('TargetAppUnavailable');
+                    }
+    
+                    targetApp = targetAppUrl ? { uuid: fin.me.identity.uuid, name: viewName, url: targetAppUrl, target: null } : undefined;
+                    launchApp = true;
+                }
+
                 intentName = findIntentName(app.appId, type);
             } else {
                 const { entityType } = clientIdentity;
                 const modalParentIdentity = entityType === 'view' ? (await fin.View.wrapSync(clientIdentity).getCurrentWindow()).identity : clientIdentity;
                 targetApp = await showPicker(modalParentIdentity, 'app', { allClientInfo });
+
+                if (!targetApp) {
+                    throw new Error('UserCancelledResolution');
+                }
+
                 targetAppId = findAppIdByUrl(targetApp.connectionUrl);
                 const client = await fin.InterApplicationBus.Channel.connect(`provider-${targetApp.name}`);
                 intentName = await client.dispatch('getSelectedIntent');
-            }
-
-            if (!targetApp) {
-                throw new Error('NoAppFound');
             }
 
             try {
