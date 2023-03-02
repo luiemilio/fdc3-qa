@@ -5,10 +5,9 @@ import { INTENTS_METADATA_MAP, INTENT_CONTEXT_MAP } from "./contexts_intents";
 
 declare const fin: OpenFin.Fin<"window" | "view">;
 
-export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBroker }, wire: any, getProvider: any, options: { contextGroups: any[]; }) => {
+export const interopOverride = async (InteropBroker: { new(): OpenFin.InteropBroker }) => {
     class Override extends InteropBroker {
         async setContext(setContextOptions, clientIdentity) {
-            options.contextGroups = [];  
             const allClientInfo = await super.getAllClientInfo();
             const broadcasterClientInfo = allClientInfo.find((clientInfo) => clientInfo.name === clientIdentity.name);
             const appId = findAppIdByUrl(broadcasterClientInfo.connectionUrl);
