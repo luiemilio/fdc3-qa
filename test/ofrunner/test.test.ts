@@ -20,7 +20,7 @@ describe('FDC3', function() {
 
         it('validate runtime status and version', async () => {
             await WebDriver.sleep(5000)
-            await topMenuIns.validateRuntimeStatus("32.114.76.8");
+            await topMenuIns.validateRuntimeStatus("33.116.77.11");
         });
 
 
@@ -47,7 +47,7 @@ describe('FDC3', function() {
             const fdc3Proxy = await OpenFinProxy.build<DesktopAgent>("fdc3", []);
             const response = await fdc3Proxy.getInfo()
             console.log(response);
-            expect(response).not.toBeDefined;
+            expect(response).toBeDefined;
             expect(response.appMetadata.appId).toBe('fdc3-client-one')
         });
 
@@ -430,6 +430,55 @@ describe('FDC3', function() {
             };
             expect(response).toBeDefined;
             console.log(response);
+
+
+        });
+
+        it.skip('validate fdc3-raiseIntent-simple', async () => {
+            await webDriver.switchToWindow("title", "Client");
+            //const fin = await OpenFinProxy.fin();
+            const fdc3Proxy = await OpenFinProxy.build<DesktopAgent>("fdc3", []);
+            const instrument = {
+                type: "fdc3.instrument",
+                name: "Microsoft",
+                id: {
+                    ticker: "MSFT",
+                    RIC: "MSFT.OQ",
+                    ISIN: "US5949181045"
+                },
+                market: {
+                    MIC: "XNAS"
+                }
+            };
+            // const fin = await OpenFinProxy.fin();
+            // const viewId = fin.me.identity;
+          
+            //let wins = await WebDriver.getWindows();
+            
+             const intentResolution  =  fdc3Proxy.raiseIntentForContext(instrument);
+            // await WebDriver.switchToWindow("identityString", [/picker-internal-generated-window(.*)/, "fdc3-qa"]);
+            // const getelem = await WebDriver.findElementById('picker-okay-button')
+            // await getelem.click();
+            // await WebDriver.sleep(7000)
+            let wins = await WebDriver.getWindows();
+            const winslen = (await WebDriver.getWindows());
+            console.log(winslen)
+            for (const win of wins) {
+                
+                if (win.identity!== undefined)
+                {
+                    if (win.identity.name.includes("picker-internal-generated-window") )
+                    {
+                        console.log(win);
+                        
+                        await WebDriver.switchToWindow('handle', win.handle);
+                        const getelem = await WebDriver.findElementById('picker-okay-button')
+                        await getelem.click();
+                    }
+                }
+            };
+            expect(intentResolution).toBeDefined;
+            console.log(intentResolution);
 
 
         });

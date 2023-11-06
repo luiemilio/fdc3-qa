@@ -1,7 +1,7 @@
 {
 	"runtime": {
 		"arguments": "--v=1 --inspect",
-		"version": "32.114.76.8"
+		"version": "stable-v33"
 	},
 	"platform": {
 		"uuid": "fdc3-qa",
@@ -28,10 +28,10 @@
 		"interopBrokerConfiguration": {
 			"logging": {
 				"beforeAction": {
-					"enabled": false
+					"enabled": true
 				},
 				"afterAction": {
-					"enabled": false
+					"enabled": true
 				}
 			}
 		}
