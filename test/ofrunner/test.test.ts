@@ -34,7 +34,7 @@ describe('FDC3', function() {
             expect(response.instanceId).toBeDefined;
         });
 
-         it('validate fdc3-open app - invalid app', async () => {
+         it('FAIL - validate fdc3-open app - invalid app', async () => {
             await webDriver.switchToWindow("title", "Client");
             const fdc3Proxy = await OpenFinProxy.build<DesktopAgent>("fdc3", []);
             const response = await fdc3Proxy.open({appId:'foo'});
@@ -67,7 +67,7 @@ describe('FDC3', function() {
             // expect(instrumentListener).not.toBeNull
         });
 
-        it('validate fdc3-joinChannel - No channel Found', async () => {
+        it('FAIL - validate fdc3-joinChannel - No channel Found', async () => {
             await webDriver.switchToWindow("title", "Client");
             const fdc3Proxy = await OpenFinProxy.build<DesktopAgent>("fdc3", []);
             const response = await fdc3Proxy.joinUserChannel('foo');
@@ -353,7 +353,7 @@ describe('FDC3', function() {
         });
 
 
-        it('validate fdc3-leaveCurrentChannel and  braodcast', async () => {
+        it('FAIL - validate fdc3-leaveCurrentChannel and  braodcast', async () => {
             const instrument = {
                 type: "fdc3.instrument",
                 name: "Microsoft",
